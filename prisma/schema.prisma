@@ -1,0 +1,289 @@
+// Prisma Schema for Hela PHA Medical Records Platform
+// Database: PostgreSQL
+// Language: JavaScript
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTHENTICATION & USER MANAGEMENT
+// ============================================
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // admin, records_staff, clinician, lab_tech, radiographer, data_manager, viewer
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
+model User {
+  id                String              @id @default(uuid())
+  email             String              @unique
+  password          String
+  firstName         String
+  lastName          String
+  phone             String?
+  roleId            String
+  role              Role                @relation(fields: [roleId], references: [id])
+  isActive          Boolean             @default(true)
+  lastLogin         DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relationships
+  clinicalNotes     ClinicalNote[]
+  orders            Order[]
+  results           Result[]
+  auditLogs         AuditLog[]
+  assignedIssues    DataQualityIssue[]  @relation("AssignedTo")
+  createdIssues     DataQualityIssue[]  @relation("CreatedBy")
+  encounters        Encounter[]         @relation("AttendingClinician")
+
+  @@index([email])
+  @@index([roleId])
+}
+
+// ============================================
+// PATIENT MANAGEMENT
+// ============================================
+
+model Patient {
+  id                String      @id @default(uuid())
+  mrn               String      @unique // Medical Record Number
+  firstName         String
+  middleName        String?
+  lastName          String
+  sex               String      // male, female, other
+  dateOfBirth       DateTime?
+  ageEstimate       Int?        // If DOB unknown
+  phoneNumber       String?
+  address           String?
+  city              String?
+  county            String?
+  nextOfKinName     String?
+  nextOfKinPhone    String?
+  nextOfKinRelation String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relationships
+  encounters        Encounter[]
+  recordFiles       RecordFile[]
+
+  @@index([mrn])
+  @@index([lastName, firstName])
+  @@index([phoneNumber])
+}
+
+// ============================================
+// DEPARTMENT MANAGEMENT
+// ============================================
+
+model Department {
+  id          String      @id @default(uuid())
+  name        String      @unique // OPD, IPD, Emergency, Laboratory, Radiology, Theatre
+  code        String      @unique
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relationships
+  encounters  Encounter[]
+
+  @@index([code])
+}
+
+// ============================================
+// ENCOUNTER MANAGEMENT (OPD/IPD)
+// ============================================
+
+model Encounter {
+  id                  String         @id @default(uuid())
+  patientId           String
+  patient             Patient        @relation(fields: [patientId], references: [id])
+  departmentId        String
+  department          Department     @relation(fields: [departmentId], references: [id])
+  attendingClinicianId String?
+  attendingClinician  User?          @relation("AttendingClinician", fields: [attendingClinicianId], references: [id])
+  encounterType       String         // opd, ipd, emergency
+  status              String         @default("open") // open, closed
+  admissionDate       DateTime       @default(now())
+  dischargeDate       DateTime?
+  chiefComplaint      String?
+  diagnosis           String?
+  outcome             String?        // discharged, admitted, transferred, deceased, absconded
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  
+  // Relationships
+  clinicalNotes       ClinicalNote[]
+  orders              Order[]
+
+  @@index([patientId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([admissionDate])
+}
+
+// ============================================
+// CLINICAL NOTES
+// ============================================
+
+model ClinicalNote {
+  id          String    @id @default(uuid())
+  encounterId String
+  encounter   Encounter @relation(fields: [encounterId], references: [id])
+  clinicianId String
+  clinician   User      @relation(fields: [clinicianId], references: [id])
+  noteType    String    // admission, progress, discharge
+  vitals      Json?     // { bp, temp, pulse, rr, spo2, weight, height }
+  noteText    String    @db.Text
+  attachments Json?     // Array of file URLs
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([encounterId])
+  @@index([clinicianId])
+  @@index([createdAt])
+}
+
+// ============================================
+// ORDERS (LAB & RADIOLOGY)
+// ============================================
+
+model Order {
+  id              String    @id @default(uuid())
+  encounterId     String
+  encounter       Encounter @relation(fields: [encounterId], references: [id])
+  orderType       String    // lab, radiology
+  orderCategory   String?   // hematology, chemistry, microbiology, xray, ultrasound, ct, mri
+  testName        String
+  orderingClinician String
+  clinician       User      @relation(fields: [orderingClinician], references: [id])
+  priority        String    @default("routine") // routine, urgent, stat
+  status          String    @default("pending") // pending, collected, processing, completed, cancelled
+  specimenType    String?   // For lab orders
+  collectedAt     DateTime?
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relationships
+  results         Result[]
+
+  @@index([encounterId])
+  @@index([orderType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================
+// RESULTS (LAB & RADIOLOGY)
+// ============================================
+
+model Result {
+  id              String    @id @default(uuid())
+  orderId         String
+  order           Order     @relation(fields: [orderId], references: [id])
+  resultType      String    // lab_result, radiology_report
+  resultData      Json?     // Structured lab values or radiology findings
+  resultText      String?   @db.Text
+  attachments     Json?     // Array of image/PDF URLs
+  enteredBy       String
+  technician      User      @relation(fields: [enteredBy], references: [id])
+  approvedBy      String?
+  approvedAt      DateTime?
+  isAbnormal      Boolean   @default(false)
+  criticalFlag    Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+// ============================================
+// RECORDS MANAGEMENT (SCANNED FILES)
+// ============================================
+
+model RecordFile {
+  id              String    @id @default(uuid())
+  patientId       String
+  patient         Patient   @relation(fields: [patientId], references: [id])
+  fileName        String
+  fileUrl         String    // S3 bucket URL
+  fileType        String    // pdf, jpg, png
+  fileSize        Int       // bytes
+  documentType    String    // chart, lab_report, imaging, consent_form, discharge_summary
+  uploadedBy      String
+  physicalLocation String?  // Where physical chart is stored
+  checkoutStatus  String    @default("available") // available, checked_out, archived
+  checkedOutBy    String?
+  checkedOutAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([patientId])
+  @@index([documentType])
+  @@index([checkoutStatus])
+}
+
+// ============================================
+// DATA QUALITY GOVERNANCE
+// ============================================
+
+model DataQualityIssue {
+  id          String    @id @default(uuid())
+  issueType   String    // missing_data, invalid_data, duplicate_record, incomplete_encounter
+  severity    String    // low, medium, high, critical
+  entityType  String    // patient, encounter, order, result
+  entityId    String
+  description String    @db.Text
+  ruleViolated String?  // Rule that triggered this issue
+  status      String    @default("open") // open, in_progress, resolved, dismissed
+  assignedTo  String?
+  assignee    User?     @relation("AssignedTo", fields: [assignedTo], references: [id])
+  createdBy   String
+  creator     User      @relation("CreatedBy", fields: [createdBy], references: [id])
+  resolvedAt  DateTime?
+  resolution  String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([severity])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// ============================================
+// AUDIT TRAIL
+// ============================================
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  action      String    // create, update, delete, login, logout
+  entityType  String    // patient, encounter, order, user, etc.
+  entityId    String?
+  beforeValue Json?     // State before change
+  afterValue  Json?     // State after change
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+}
