@@ -42,7 +42,14 @@ app.use(helmet());
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: [
+      [
+        "https://hela-pha-medical-records-frontend.vercel.app", // Your Vercel URL
+        "https://hela-pha-medical-records-frontend-*.vercel.app", // Preview deployments
+        "http://localhost:3000", // Local development
+        process.env.FRONTEND_URL, // Environment variable
+      ],
+    ],
     credentials: true,
   })
 );
