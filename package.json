@@ -7,7 +7,7 @@
     "dev": "nodemon backend/server.js",
     "dev:frontend": "cd frontend && npm run dev",
     "start": "node server.js",
-    "build": "cd frontend && npm run build",
+    "build": "npx prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:prod": "prisma migrate deploy",
