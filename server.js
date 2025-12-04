@@ -36,23 +36,33 @@ const app = express();
 // MIDDLEWARE CONFIGURATION
 // ============================================
 
-// Security headers
-app.use(helmet());
-
 // CORS configuration
 app.use(
   cors({
     origin: [
-      [
-        "https://hela-pha-medical-records-frontend.vercel.app", // Your Vercel URL
-        "https://hela-pha-medical-records-frontend-*.vercel.app", // Preview deployments
-        "http://localhost:3000", // Local development
-        process.env.FRONTEND_URL, // Environment variable
-      ],
+      "https://hela-pha-medical-records-frontend.vercel.app", // Production
+      "https://hela-pha-medical-records-frontend-6irlb8ora.vercel.app", // Current deployment
+      "https://hela-pha-medical-records-frontend-*.vercel.app", // All Vercel previews
+      "http://localhost:3000", // Local dev
     ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+    ],
+    exposedHeaders: ["Content-Length"],
+    maxAge: 86400,
   })
 );
+
+// Handle preflight
+app.options("*", cors());
+
+// Security headers
+app.use(helmet());
 
 // Body parsers
 app.use(express.json({ limit: "10mb" }));
