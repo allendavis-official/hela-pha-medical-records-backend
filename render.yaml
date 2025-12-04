@@ -1,20 +1,31 @@
+# backend/render.yaml
+
 services:
+  # Backend Web Service
   - type: web
     name: hela-pha-backend
-    env: node
+    runtime: node
+    plan: free
+    region: oregon
     buildCommand: npm install && npx prisma generate
     startCommand: npm start
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: DATABASE_URL
         fromDatabase:
           name: hela-pha-db
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
-      - key: NODE_ENV
-        value: production
+      - key: JWT_EXPIRES_IN
+        value: 7d
+    healthCheckPath: /api/health
 
 databases:
+  # PostgreSQL Database
   - name: hela-pha-db
     databaseName: hela_pha
     user: hela_pha_user
+    plan: free
+    region: oregon
