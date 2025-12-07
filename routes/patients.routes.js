@@ -13,6 +13,7 @@ const {
   uploadPatientImage,
   uploadToCloudinary,
 } = require("../middleware/upload");
+const { prisma } = require("../config/database");
 
 // All routes require authentication
 router.use(authenticate);
