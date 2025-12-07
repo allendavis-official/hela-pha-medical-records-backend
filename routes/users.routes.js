@@ -11,6 +11,8 @@ const {
   validateUserUpdate,
 } = require("../middleware/validation");
 const { auditAction } = require("../middleware/audit");
+const { asyncHandler } = require("../middleware/errorHandler");
+const { uploadUserImage } = require("../middleware/upload");
 
 // All routes require authentication
 router.use(authenticate);
@@ -68,6 +70,48 @@ router.delete(
   checkPermission("user", "delete"), // Admin only
   auditAction("delete", "user"),
   userController.deleteUser
+);
+
+// POST /api/users/:id/upload-image
+router.post(
+  "/:id/upload-image",
+  authenticate,
+  checkPermission("user", "update"),
+  uploadUserImage.single("image"),
+  asyncHandler(async (req, res) => {
+    const userId = req.params.id;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No image file provided",
+      });
+    }
+
+    // Update user with image URL
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        profileImage: req.file.path,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        profileImage: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "Profile image uploaded successfully",
+      data: {
+        imageUrl: req.file.path,
+        user: updatedUser,
+      },
+    });
+  })
 );
 
 module.exports = router;

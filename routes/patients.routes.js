@@ -8,6 +8,8 @@ const { authenticate } = require("../middleware/auth");
 const { checkPermission } = require("../middleware/permissions");
 const { validatePatientRegistration } = require("../middleware/validation");
 const { auditAction } = require("../middleware/audit");
+const { asyncHandler } = require("../middleware/errorHandler");
+const { uploadPatientImage } = require("../middleware/upload");
 
 // All routes require authentication
 router.use(authenticate);
@@ -78,6 +80,48 @@ router.delete(
   checkPermission("patient", "delete"),
   auditAction("delete", "patient"),
   patientController.deletePatient
+);
+
+// POST /api/patients/:id/upload-image
+router.post(
+  "/:id/upload-image",
+  authenticate,
+  checkPermission("patient", "update"),
+  uploadPatientImage.single("image"),
+  asyncHandler(async (req, res) => {
+    const patientId = req.params.id;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No image file provided",
+      });
+    }
+
+    // Update patient with image URL
+    const updatedPatient = await prisma.patient.update({
+      where: { id: patientId },
+      data: {
+        profileImage: req.file.path,
+      },
+      select: {
+        id: true,
+        mrn: true,
+        firstName: true,
+        lastName: true,
+        profileImage: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "Patient image uploaded successfully",
+      data: {
+        imageUrl: req.file.path,
+        patient: updatedPatient,
+      },
+    });
+  })
 );
 
 module.exports = router;

@@ -255,37 +255,43 @@ function validateUserCreation(req, res, next) {
 /**
  * Validate user update
  */
-function validateUserUpdate(req, res, next) {
-  const { firstName, lastName, email, password } = req.body;
+async function validateUserUpdate(req, res, next) {
+  const { email, firstName, lastName, roleId, phone } = req.body;
 
-  // Don't allow email updates
-  if (email) {
+  // Only block if email is being CHANGED
+  if (email !== undefined) {
+    const { prisma } = require("../config/database");
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { email: true },
+    });
+
+    // Only reject if email is different
+    if (currentUser && email !== currentUser.email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email cannot be updated",
+      });
+    }
+  }
+
+  // Validate first name
+  if (
+    firstName !== undefined &&
+    (!firstName || firstName.trim().length === 0)
+  ) {
     return res.status(400).json({
       success: false,
-      message: "Email cannot be updated",
+      message: "First name is required",
     });
   }
 
-  // Don't allow password updates via this endpoint
-  if (password) {
+  // Validate last name
+  if (lastName !== undefined && (!lastName || lastName.trim().length === 0)) {
     return res.status(400).json({
       success: false,
-      message: "Use the reset-password endpoint to change password",
-    });
-  }
-
-  // Validate name fields if provided
-  if (firstName !== undefined && firstName.trim().length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: "First name cannot be empty",
-    });
-  }
-
-  if (lastName !== undefined && lastName.trim().length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: "Last name cannot be empty",
+      message: "Last name is required",
     });
   }
 
