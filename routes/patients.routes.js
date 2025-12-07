@@ -9,7 +9,10 @@ const { checkPermission } = require("../middleware/permissions");
 const { validatePatientRegistration } = require("../middleware/validation");
 const { auditAction } = require("../middleware/audit");
 const { asyncHandler } = require("../middleware/errorHandler");
-const { uploadPatientImage } = require("../middleware/upload");
+const {
+  uploadPatientImage,
+  uploadToCloudinary,
+} = require("../middleware/upload");
 
 // All routes require authentication
 router.use(authenticate);
@@ -87,7 +90,7 @@ router.post(
   "/:id/upload-image",
   authenticate,
   checkPermission("patient", "update"),
-  uploadPatientImage.single("image"),
+  uploadPatientImage,
   asyncHandler(async (req, res) => {
     const patientId = req.params.id;
 
@@ -98,29 +101,43 @@ router.post(
       });
     }
 
-    // Update patient with image URL
-    const updatedPatient = await prisma.patient.update({
-      where: { id: patientId },
-      data: {
-        profileImage: req.file.path,
-      },
-      select: {
-        id: true,
-        mrn: true,
-        firstName: true,
-        lastName: true,
-        profileImage: true,
-      },
-    });
+    try {
+      // Upload to Cloudinary
+      const result = await uploadToCloudinary(
+        req.file.buffer,
+        "hela-pha/patients"
+      );
 
-    res.json({
-      success: true,
-      message: "Patient image uploaded successfully",
-      data: {
-        imageUrl: req.file.path,
-        patient: updatedPatient,
-      },
-    });
+      // Update patient with image URL
+      const updatedPatient = await prisma.patient.update({
+        where: { id: patientId },
+        data: {
+          profileImage: result.secure_url,
+        },
+        select: {
+          id: true,
+          mrn: true,
+          firstName: true,
+          lastName: true,
+          profileImage: true,
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Patient image uploaded successfully",
+        data: {
+          imageUrl: result.secure_url,
+          patient: updatedPatient,
+        },
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload image",
+      });
+    }
   })
 );
 

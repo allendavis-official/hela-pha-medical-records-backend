@@ -12,7 +12,7 @@ const {
 } = require("../middleware/validation");
 const { auditAction } = require("../middleware/audit");
 const { asyncHandler } = require("../middleware/errorHandler");
-const { uploadUserImage } = require("../middleware/upload");
+const { uploadUserImage, uploadToCloudinary } = require("../middleware/upload");
 
 // All routes require authentication
 router.use(authenticate);
@@ -77,7 +77,7 @@ router.post(
   "/:id/upload-image",
   authenticate,
   checkPermission("user", "update"),
-  uploadUserImage.single("image"),
+  uploadUserImage,
   asyncHandler(async (req, res) => {
     const userId = req.params.id;
 
@@ -88,29 +88,43 @@ router.post(
       });
     }
 
-    // Update user with image URL
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        profileImage: req.file.path,
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        profileImage: true,
-      },
-    });
+    try {
+      // Upload to Cloudinary
+      const result = await uploadToCloudinary(
+        req.file.buffer,
+        "hela-pha/users"
+      );
 
-    res.json({
-      success: true,
-      message: "Profile image uploaded successfully",
-      data: {
-        imageUrl: req.file.path,
-        user: updatedUser,
-      },
-    });
+      // Update user with image URL
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          profileImage: result.secure_url,
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          profileImage: true,
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Profile image uploaded successfully",
+        data: {
+          imageUrl: result.secure_url,
+          user: updatedUser,
+        },
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload image",
+      });
+    }
   })
 );
 
