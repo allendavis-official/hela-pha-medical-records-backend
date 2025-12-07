@@ -90,24 +90,34 @@ const validationRules = {
 /**
  * Patient registration validation
  */
-const validatePatientRegistration = [
-  validationRules.requiredString("firstName"),
-  validationRules.requiredString("lastName"),
-  body("sex")
-    .isIn(["male", "female", "other"])
-    .withMessage("Sex must be male, female, or other"),
-  body("dateOfBirth")
-    .optional()
-    .isISO8601()
-    .withMessage("Invalid date of birth"),
-  body("ageEstimate")
-    .optional()
-    .isInt({ min: 0, max: 150 })
-    .withMessage("Age estimate must be between 0 and 150"),
-  validationRules.optionalString("phoneNumber"),
-  validationRules.optionalString("address"),
-  validate,
-];
+function validatePatientRegistration(req, res, next) {
+  const { firstName, lastName, sex } = req.body;
+
+  // Only validate required fields
+  if (!firstName || firstName.trim().length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "First name is required",
+    });
+  }
+
+  if (!lastName || lastName.trim().length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Last name is required",
+    });
+  }
+
+  if (!sex || !["male", "female", "other"].includes(sex.toLowerCase())) {
+    return res.status(400).json({
+      success: false,
+      message: "Sex is required",
+    });
+  }
+
+  // That's it! Everything else is optional
+  next();
+}
 
 /**
  * Login validation
