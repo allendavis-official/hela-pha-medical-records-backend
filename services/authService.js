@@ -146,6 +146,7 @@ async function getCurrentUser(userId) {
       lastName: true,
       phone: true,
       isActive: true,
+      profileImage: true,
       lastLogin: true,
       createdAt: true,
       role: {

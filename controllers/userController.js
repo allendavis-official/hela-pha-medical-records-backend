@@ -107,6 +107,21 @@ const deleteUser = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @route   POST /api/users/:id/deactivate
+ * @desc    Deactivate user account (soft delete)
+ * @access  Private (admin only)
+ */
+const deactivateUser = asyncHandler(async (req, res) => {
+  const user = await userService.deactivateUser(req.params.id);
+
+  res.status(200).json({
+    success: true,
+    message: "User deactivated successfully",
+    data: user,
+  });
+});
+
+/**
  * @route   GET /api/users/statistics/summary
  * @desc    Get user statistics
  * @access  Private (admin only)
@@ -127,5 +142,6 @@ module.exports = {
   updateUser,
   resetUserPassword,
   deleteUser,
+  deactivateUser,
   getUserStatistics,
 };

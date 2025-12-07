@@ -65,10 +65,18 @@ router.post(
   userController.resetUserPassword
 );
 
-// DELETE /api/users/:id - Delete user (soft delete)
+// POST /api/users/:id/deactivate - Deactivate user (soft delete)
+router.post(
+  "/:id/deactivate",
+  checkPermission("user", "delete"),
+  auditAction("deactivate", "user"),
+  userController.deactivateUser
+);
+
+// DELETE /api/users/:id - Delete user (hard delete)
 router.delete(
   "/:id",
-  checkPermission("user", "delete"), // Admin only
+  checkPermission("user", "delete"),
   auditAction("delete", "user"),
   userController.deleteUser
 );

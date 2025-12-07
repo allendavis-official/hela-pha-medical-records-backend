@@ -202,7 +202,7 @@ async function resetUserPassword(userId, newPassword) {
 }
 
 /**
- * Delete user (soft delete by deactivating)
+ * Hard delete user (permanently remove from database)
  * @param {string} userId - User ID
  * @returns {Promise<boolean>} Success status
  */
@@ -216,15 +216,38 @@ async function deleteUser(userId) {
     throw new AppError("User not found", 404);
   }
 
+  // Hard delete - permanently remove from database
+  await prisma.user.delete({
+    where: { id: userId },
+  });
+
+  return true;
+}
+
+/**
+ * Soft delete user (deactivate account)
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} Updated user
+ */
+async function deactivateUser(userId) {
+  // Check if user exists
+  const existingUser = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!existingUser) {
+    throw new AppError("User not found", 404);
+  }
+
   // Soft delete by deactivating
-  await prisma.user.update({
+  const deactivatedUser = await prisma.user.update({
     where: { id: userId },
     data: {
       isActive: false,
     },
   });
 
-  return true;
+  return deactivatedUser;
 }
 
 /**
@@ -283,5 +306,6 @@ module.exports = {
   updateUser,
   resetUserPassword,
   deleteUser,
+  deactivateUser,
   getUserStatistics,
 };
