@@ -209,6 +209,7 @@ async function searchPatients(searchParams) {
       ageEstimate: true,
       phoneNumber: true,
       city: true,
+      profileImage: true,
       createdAt: true,
     },
   });
