@@ -81,6 +81,7 @@ async function login(email, password, ipAddress, userAgent) {
       firstName: user.firstName,
       lastName: user.lastName,
       phone: user.phone,
+      profileImage: user.profileImage,
       role: {
         id: user.role.id,
         name: user.role.name,
