@@ -5,16 +5,17 @@ const userService = require("../services/userService");
 const { asyncHandler } = require("../middleware/errorHandler");
 
 /**
- * @route   GET /api/users
- * @desc    Get all users
+ * @route   POST /api/users
+ * @desc    Create new user
  * @access  Private (admin only)
  */
-const getAllUsers = asyncHandler(async (req, res) => {
-  const users = await userService.getAllUsers();
+const createUser = asyncHandler(async (req, res) => {
+  const user = await userService.createUser(req.body);
 
-  res.status(200).json({
+  res.status(201).json({
     success: true,
-    data: users,
+    message: "User created successfully",
+    data: user,
   });
 });
 
@@ -33,23 +34,36 @@ const getUserById = asyncHandler(async (req, res) => {
 });
 
 /**
- * @route   POST /api/users
- * @desc    Create new user
- * @access  Private (admin only)
+ * @route   GET /api/users/me
+ * @desc    Get current user's own profile
+ * @access  Private (any authenticated user)
  */
-const createUser = asyncHandler(async (req, res) => {
-  const user = await userService.createUser(req.body);
+const getCurrentUser = asyncHandler(async (req, res) => {
+  const user = await userService.getUserById(req.user.id);
 
-  res.status(201).json({
+  res.status(200).json({
     success: true,
-    message: "User created successfully",
     data: user,
   });
 });
 
 /**
+ * @route   GET /api/users
+ * @desc    Get all users
+ * @access  Private (admin only)
+ */
+const getAllUsers = asyncHandler(async (req, res) => {
+  const users = await userService.getAllUsers(req.query);
+
+  res.status(200).json({
+    success: true,
+    data: users,
+  });
+});
+
+/**
  * @route   PUT /api/users/:id
- * @desc    Update user
+ * @desc    Update user (admin)
  * @access  Private (admin only)
  */
 const updateUser = asyncHandler(async (req, res) => {
@@ -63,38 +77,39 @@ const updateUser = asyncHandler(async (req, res) => {
 });
 
 /**
- * @route   POST /api/users/:id/reset-password
- * @desc    Reset user password
- * @access  Private (admin only)
+ * @route   PUT /api/users/me
+ * @desc    Update own profile
+ * @access  Private (any authenticated user)
  */
-const resetUserPassword = asyncHandler(async (req, res) => {
-  const { password } = req.body;
+const updateOwnProfile = asyncHandler(async (req, res) => {
+  // Users can only update certain fields on their own profile
+  const allowedFields = {
+    firstName: req.body.firstName,
+    lastName: req.body.lastName,
+    phone: req.body.phone,
+    email: req.body.email,
+    position: req.body.position,
+  };
 
-  if (!password) {
-    return res.status(400).json({
-      success: false,
-      message: "Password is required",
-    });
-  }
+  // Remove undefined fields
+  Object.keys(allowedFields).forEach((key) => {
+    if (allowedFields[key] === undefined) {
+      delete allowedFields[key];
+    }
+  });
 
-  if (password.length < 8) {
-    return res.status(400).json({
-      success: false,
-      message: "Password must be at least 8 characters long",
-    });
-  }
-
-  await userService.resetUserPassword(req.params.id, password);
+  const user = await userService.updateUser(req.user.id, allowedFields);
 
   res.status(200).json({
     success: true,
-    message: "Password reset successfully",
+    message: "Profile updated successfully",
+    data: user,
   });
 });
 
 /**
  * @route   DELETE /api/users/:id
- * @desc    Delete user (soft delete by deactivating)
+ * @desc    Delete user
  * @access  Private (admin only)
  */
 const deleteUser = asyncHandler(async (req, res) => {
@@ -102,7 +117,7 @@ const deleteUser = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: "User deactivated successfully",
+    message: "User deleted successfully",
   });
 });
 
@@ -118,20 +133,6 @@ const deactivateUser = asyncHandler(async (req, res) => {
     success: true,
     message: "User deactivated successfully",
     data: user,
-  });
-});
-
-/**
- * @route   GET /api/users/statistics/summary
- * @desc    Get user statistics
- * @access  Private (admin only)
- */
-const getUserStatistics = asyncHandler(async (req, res) => {
-  const stats = await userService.getUserStatistics();
-
-  res.status(200).json({
-    success: true,
-    data: stats,
   });
 });
 
@@ -165,29 +166,14 @@ const changePassword = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @route   GET /api/users/me
- * @desc    Get current user's own profile
- * @access  Private (any authenticated user)
- */
-const getCurrentUser = asyncHandler(async (req, res) => {
-  const user = await userService.getUserById(req.user.id);
-
-  res.status(200).json({
-    success: true,
-    data: user,
-  });
-});
-
 module.exports = {
-  getAllUsers,
-  getUserById,
   createUser,
+  getUserById,
+  getCurrentUser,
+  getAllUsers,
   updateUser,
-  resetUserPassword,
+  updateOwnProfile,
   deleteUser,
   deactivateUser,
-  getUserStatistics,
   changePassword,
-  getCurrentUser,
 };
