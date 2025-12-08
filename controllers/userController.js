@@ -165,6 +165,20 @@ const changePassword = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * @route   GET /api/users/me
+ * @desc    Get current user's own profile
+ * @access  Private (any authenticated user)
+ */
+const getCurrentUser = asyncHandler(async (req, res) => {
+  const user = await userService.getUserById(req.user.id);
+
+  res.status(200).json({
+    success: true,
+    data: user,
+  });
+});
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -175,4 +189,5 @@ module.exports = {
   deactivateUser,
   getUserStatistics,
   changePassword,
+  getCurrentUser,
 };

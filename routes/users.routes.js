@@ -41,6 +41,13 @@ router.post(
   userController.createUser
 );
 
+// GET /api/users/me - Get current user's own profile (no special permission needed)
+router.get(
+  "/me",
+  authenticate, // Only need to be authenticated
+  userController.getCurrentUser
+);
+
 // GET /api/users/:id - Get user by ID
 router.get(
   "/:id",
