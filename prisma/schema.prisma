@@ -31,6 +31,7 @@ model User {
   firstName         String
   lastName          String
   phone             String?
+  position          String?
   profileImage      String?
   roleId            String
   role              Role                @relation(fields: [roleId], references: [id])
@@ -68,7 +69,9 @@ model Patient {
   phoneNumber       String?
   address           String?
   city              String?
-  county            String?
+  town              String?
+  district          String?
+  province          String?
   profileImage      String?
   nextOfKinName     String?
   nextOfKinPhone    String?
