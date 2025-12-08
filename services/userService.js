@@ -96,6 +96,7 @@ async function createUser(userData) {
       firstName,
       lastName,
       phone: phone || null,
+      position: userData.position || null,
       roleId,
       isActive: true,
     },
@@ -141,9 +142,17 @@ async function updateUser(userId, updateData) {
     }
   }
 
-  // Don't allow email or password updates via this endpoint
-  delete updateData.email;
-  delete updateData.password;
+  // Allow email updates now
+  if (updateData.email && updateData.email !== existingUser.email) {
+    // Check if new email is already taken
+    const emailTaken = await prisma.user.findUnique({
+      where: { email: updateData.email.toLowerCase() },
+    });
+
+    if (emailTaken) {
+      throw new AppError("Email address is already in use", 400);
+    }
+  }
 
   // Update user
   const updatedUser = await prisma.user.update({
@@ -152,6 +161,7 @@ async function updateUser(userId, updateData) {
       firstName: updateData.firstName,
       lastName: updateData.lastName,
       phone: updateData.phone,
+      position: updateData.position,
       roleId: updateData.roleId,
       isActive: updateData.isActive,
     },
@@ -299,6 +309,43 @@ async function getUserStatistics() {
   };
 }
 
+/**
+ * Change user password
+ * @param {string} userId - User ID
+ * @param {string} currentPassword - Current password
+ * @param {string} newPassword - New password
+ * @returns {Promise<boolean>} Success status
+ */
+async function changePassword(userId, currentPassword, newPassword) {
+  // Get user with password
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Verify current password
+  const isValid = await bcrypt.compare(currentPassword, user.password);
+  if (!isValid) {
+    throw new AppError("Current password is incorrect", 401);
+  }
+
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  // Update password
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      password: hashedPassword,
+    },
+  });
+
+  return true;
+}
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -308,4 +355,5 @@ module.exports = {
   deleteUser,
   deactivateUser,
   getUserStatistics,
+  changePassword,
 };

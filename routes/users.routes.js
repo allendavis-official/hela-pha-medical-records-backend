@@ -137,4 +137,12 @@ router.post(
   })
 );
 
+// POST /api/users/change-password - Change own password
+router.post(
+  "/change-password",
+  authenticate, // Just need to be authenticated
+  auditAction("change_password", "user"),
+  userController.changePassword
+);
+
 module.exports = router;
