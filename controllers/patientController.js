@@ -92,6 +92,39 @@ const deletePatient = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @route   POST /api/patients/:id/archive
+ * @desc    Archive patient
+ * @access  Private (admin, records_staff)
+ */
+const archivePatient = asyncHandler(async (req, res) => {
+  const patient = await patientService.archivePatient(
+    req.params.id,
+    req.user.id
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Patient archived successfully",
+    data: patient,
+  });
+});
+
+/**
+ * @route   POST /api/patients/:id/restore
+ * @desc    Restore archived patient
+ * @access  Private (admin, records_staff)
+ */
+const restorePatient = asyncHandler(async (req, res) => {
+  const patient = await patientService.restorePatient(req.params.id);
+
+  res.status(200).json({
+    success: true,
+    message: "Patient restored successfully",
+    data: patient,
+  });
+});
+
+/**
  * @route   POST /api/patients/check-duplicates
  * @desc    Check for potential duplicate patients
  * @access  Private
@@ -150,6 +183,8 @@ module.exports = {
   searchPatients,
   updatePatient,
   deletePatient,
+  archivePatient,
+  restorePatient,
   checkDuplicates,
   getStatistics,
   getPatientEncounters,

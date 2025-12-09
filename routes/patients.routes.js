@@ -86,6 +86,22 @@ router.delete(
   patientController.deletePatient
 );
 
+// POST /api/patients/:id/archive - Archive patient
+router.post(
+  "/:id/archive",
+  checkPermission("patient", "delete"),
+  auditAction("archive", "patient"),
+  patientController.archivePatient
+);
+
+// POST /api/patients/:id/restore - Restore archived patient
+router.post(
+  "/:id/restore",
+  checkPermission("patient", "delete"),
+  auditAction("restore", "patient"),
+  patientController.restorePatient
+);
+
 // POST /api/patients/:id/upload-image
 router.post(
   "/:id/upload-image",

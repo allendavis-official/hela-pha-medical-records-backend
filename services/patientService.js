@@ -142,6 +142,7 @@ async function searchPatients(searchParams) {
     phone = "",
     page = 1,
     limit = 20,
+    includeArchived = false,
   } = searchParams;
 
   // Convert to integers
@@ -151,6 +152,11 @@ async function searchPatients(searchParams) {
 
   // Build where clause
   const where = {};
+
+  // Exclude archived patients by default
+  if (!includeArchived) {
+    where.isArchived = false;
+  }
 
   if (mrn) {
     where.mrn = {
@@ -215,6 +221,7 @@ async function searchPatients(searchParams) {
       district: true,
       province: true,
       profileImage: true,
+      isArchived: true,
       createdAt: true,
     },
   });
@@ -272,7 +279,9 @@ async function updatePatient(patientId, updateData) {
       phoneNumber: updateData.phoneNumber,
       address: updateData.address,
       city: updateData.city,
-      county: updateData.county,
+      town: updateData.town,
+      district: updateData.district,
+      province: updateData.province,
       nextOfKinName: updateData.nextOfKinName,
       nextOfKinPhone: updateData.nextOfKinPhone,
       nextOfKinRelation: updateData.nextOfKinRelation,
@@ -306,6 +315,67 @@ async function deletePatient(patientId) {
   });
 
   return true;
+}
+
+/**
+ * Archive patient (soft delete)
+ * @param {string} patientId - Patient ID
+ * @param {string} archivedBy - User ID who is archiving
+ * @returns {Promise<Object>} Archived patient
+ */
+async function archivePatient(patientId, archivedBy) {
+  const patient = await prisma.patient.findUnique({
+    where: { id: patientId },
+  });
+
+  if (!patient) {
+    throw new AppError("Patient not found", 404);
+  }
+
+  if (patient.isArchived) {
+    throw new AppError("Patient is already archived", 400);
+  }
+
+  const archivedPatient = await prisma.patient.update({
+    where: { id: patientId },
+    data: {
+      isArchived: true,
+      archivedAt: new Date(),
+      archivedBy: archivedBy,
+    },
+  });
+
+  return archivedPatient;
+}
+
+/**
+ * Restore archived patient
+ * @param {string} patientId - Patient ID
+ * @returns {Promise<Object>} Restored patient
+ */
+async function restorePatient(patientId) {
+  const patient = await prisma.patient.findUnique({
+    where: { id: patientId },
+  });
+
+  if (!patient) {
+    throw new AppError("Patient not found", 404);
+  }
+
+  if (!patient.isArchived) {
+    throw new AppError("Patient is not archived", 400);
+  }
+
+  const restoredPatient = await prisma.patient.update({
+    where: { id: patientId },
+    data: {
+      isArchived: false,
+      archivedAt: null,
+      archivedBy: null,
+    },
+  });
+
+  return restoredPatient;
 }
 
 /**
@@ -427,6 +497,8 @@ module.exports = {
   searchPatients,
   updatePatient,
   deletePatient,
+  archivePatient,
+  restorePatient,
   findPotentialDuplicates,
   getPatientStatistics,
   getPatientEncounters,
