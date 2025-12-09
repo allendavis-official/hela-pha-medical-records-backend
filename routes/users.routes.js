@@ -23,11 +23,11 @@ router.use(authenticate);
 router.get("/me", userController.getCurrentUser);
 
 // PUT /api/users/me - Update own profile
-router.put(
-  "/me",
-  auditAction("update", "own_profile"),
-  userController.updateOwnProfile
-);
+// router.put(
+//   "/me",
+//   auditAction("update", "own_profile"),
+//   userController.updateOwnProfile
+// );
 
 // POST /api/users/me/upload-image - Upload own profile image
 router.post(
