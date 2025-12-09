@@ -28,6 +28,7 @@ const dataQualityRoutes = require("./routes/dataQuality.routes");
 const userRoutes = require("./routes/users.routes");
 const departmentRoutes = require("./routes/departments.routes");
 const roleRoutes = require("./routes/roles.routes");
+const messageRoutes = require("./routes/messages.routes");
 
 // Initialize Express app
 const app = express();
@@ -112,6 +113,7 @@ app.use(`${API_PREFIX}/data-quality`, dataQualityRoutes);
 app.use(`${API_PREFIX}/users`, userRoutes);
 app.use(`${API_PREFIX}/departments`, departmentRoutes);
 app.use(`${API_PREFIX}/roles`, roleRoutes);
+app.use(`${API_PREFIX}/messages`, messageRoutes);
 
 // ============================================
 // 404 HANDLER

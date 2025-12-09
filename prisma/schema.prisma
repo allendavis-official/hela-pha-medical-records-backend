@@ -48,6 +48,8 @@ model User {
   assignedIssues    DataQualityIssue[]  @relation("AssignedTo")
   createdIssues     DataQualityIssue[]  @relation("CreatedBy")
   encounters        Encounter[]         @relation("AttendingClinician")
+  sentMessages      Message[]           @relation("SentMessages")
+  receivedMessages  Message[]           @relation("ReceivedMessages")
 
   @@index([email])
   @@index([roleId])
@@ -295,4 +297,36 @@ model AuditLog {
   @@index([action])
   @@index([entityType, entityId])
   @@index([timestamp])
+}
+
+model Message {
+  id          String    @id @default(uuid())
+  
+  senderId    String
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  
+  recipientId String
+  recipient   User      @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
+  
+  subject     String?
+  body        String    @db.Text
+  
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+  
+  replyToId   String?
+  replyTo     Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies     Message[] @relation("MessageReplies")
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  deletedBySender    Boolean @default(false)
+  deletedByRecipient Boolean @default(false)
+  
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("Message")
 }
