@@ -95,7 +95,7 @@ router.post(
 // ========================================
 
 // GET /api/users - Get all users
-router.get("/", checkPermission("user", "read"), userController.getAllUsers);
+router.get("/", authenticate, userController.getAllUsers);
 
 // POST /api/users - Create new user
 router.post(
