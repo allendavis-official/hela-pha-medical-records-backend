@@ -38,14 +38,73 @@ const app = express();
 // ============================================
 
 // CORS configuration
+// app.use(
+//   cors({
+//     origin: [
+//       "https://hela-pha-medical-records-frontend.vercel.app", // Production
+//       "https://hela-pha-medical-records-frontend-6irlb8ora.vercel.app", // Current deployment
+//       "https://hela-pha-medical-records-frontend-*.vercel.app", // All Vercel previews
+//       "http://localhost:3000", // Local dev
+//     ],
+//     credentials: true,
+//     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+//     allowedHeaders: [
+//       "Content-Type",
+//       "Authorization",
+//       "X-Requested-With",
+//       "Accept",
+//     ],
+//     exposedHeaders: ["Content-Length"],
+//     maxAge: 86400,
+//   })
+// );
+
+// Handle preflight
+// app.options("*", cors());
+
+// ========================
+// NEW CODE
+// ========================
+// CORS configuration
+const allowedOrigins = [
+  "https://hela-pha-medical-records-frontend.vercel.app", // Production
+  "http://localhost:3000", // Local dev
+  "http://localhost:3001", // Local dev alternate
+];
+
+// Function to check if origin is allowed (supports Vercel preview wildcards)
+const isAllowedOrigin = (origin) => {
+  if (!origin) return false;
+
+  // Check exact matches
+  if (allowedOrigins.includes(origin)) return true;
+
+  // Check Vercel preview deployments (format: hela-pha-medical-records-frontend-{hash}.vercel.app)
+  const vercelPreviewPattern =
+    /^https:\/\/hela-pha-medical-records-frontend-[a-z0-9]+\.vercel\.app$/;
+  if (vercelPreviewPattern.test(origin)) return true;
+
+  // Check localhost with any port
+  const localhostPattern = /^http:\/\/localhost:\d+$/;
+  if (localhostPattern.test(origin)) return true;
+
+  return false;
+};
+
+// Main CORS middleware
 app.use(
   cors({
-    origin: [
-      "https://hela-pha-medical-records-frontend.vercel.app", // Production
-      "https://hela-pha-medical-records-frontend-6irlb8ora.vercel.app", // Current deployment
-      "https://hela-pha-medical-records-frontend-*.vercel.app", // All Vercel previews
-      "http://localhost:3000", // Local dev
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        console.log(`CORS blocked origin: ${origin}`);
+        callback(new Error(`CORS policy: Origin ${origin} not allowed`));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: [
@@ -56,11 +115,29 @@ app.use(
     ],
     exposedHeaders: ["Content-Length"],
     maxAge: 86400,
-  })
+  }),
 );
 
-// Handle preflight
-app.options("*", cors());
+// Handle preflight explicitly
+app.options("*", (req, res) => {
+  const origin = req.headers.origin;
+  if (isAllowedOrigin(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, X-Requested-With, Accept",
+    );
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Max-Age", "86400");
+    res.sendStatus(200);
+  } else {
+    res.sendStatus(403);
+  }
+});
 
 // Security headers
 app.use(helmet());
